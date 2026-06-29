@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidate Ingest & Transformation Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom styling stylesheet -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="stars-backdrop"></div>
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <i class="fa-solid fa-wand-magic-sparkles logo-icon"></i>
+                <div>
+                    <h1>Candidate Transformer</h1>
+                    <p class="subtitle">Multi-source Parser, Deduplication, & Normalization Pipeline</p>
+                </div>
+            </div>
+            <div class="status-badge" id="api-status">
+                <span class="status-dot"></span>
+                <span class="status-text">Checking API connection...</span>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="workspace-grid">
+            <!-- Left Panel: Form Ingest & Configurations -->
+            <section class="panel glass-card scrollable-content" id="panel-inputs">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-file-import panel-icon"></i> Ingest & Configuration</h2>
+                    <p>Load candidate files and configure the transformation pipeline</p>
+                </div>
+
+                <form id="transform-form" class="ingest-form">
+                    <!-- File Uploads -->
+                    <div class="form-section">
+                        <h3>1. Upload Source Documents</h3>
+                        
+                        <!-- CSV File Upload -->
+                        <div class="upload-group">
+                            <label class="input-label">Recruiter CSV file</label>
+                            <div class="drag-zone" id="csv-drag-zone">
+                                <input type="file" id="csv-file-input" name="csv_file" accept=".csv" class="file-input">
+                                <i class="fa-solid fa-file-csv upload-icon"></i>
+                                <div class="upload-text">
+                                    <span class="highlight">Click to upload</span> or drag recruiter CSV here
+                                </div>
+                                <div class="file-name-display" id="csv-file-name">No file selected</div>
+                            </div>
+                        </div>
+
+                        <!-- Resume PDF Upload -->
+                        <div class="upload-group">
+                            <label class="input-label">Resume PDF file</label>
+                            <div class="drag-zone" id="resume-drag-zone">
+                                <input type="file" id="resume-file-input" name="resume_file" accept=".pdf" class="file-input">
+                                <i class="fa-solid fa-file-pdf upload-icon"></i>
+                                <div class="upload-text">
+                                    <span class="highlight">Click to upload</span> or drag resume PDF here
+                                </div>
+                                <div class="file-name-display" id="resume-file-name">No file selected</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Config Settings -->
+                    <div class="form-section">
+                        <h3>2. Runtime Output Configuration</h3>
+                        
+                        <!-- Switches Grid -->
+                        <div class="switches-grid">
+                            <label class="switch-container">
+                                <span class="switch-label">Include Confidence Metrics</span>
+                                <input type="checkbox" id="cfg-confidence" checked>
+                                <span class="slider"></span>
+                            </label>
+                            
+                            <label class="switch-container">
+                                <span class="switch-label">Include Field Provenance</span>
+                                <input type="checkbox" id="cfg-provenance" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Missing Value Behavior -->
+                        <div class="input-group">
+                            <label for="cfg-missing-behavior" class="input-label">On Missing Field Behavior</label>
+                            <div class="select-wrapper">
+                                <select id="cfg-missing-behavior">
+                                    <option value="null">Set to Null</option>
+                                    <option value="omit" selected>Omit Field</option>
+                                    <option value="error">Raise HTTP 400 Error</option>
+                                </select>
+                                <i class="fa-solid fa-chevron-down select-arrow"></i>
+                            </div>
+                        </div>
+
+                        <!-- Output Fields Selectors -->
+                        <div class="input-group">
+                            <label class="input-label">Output Fields to Include</label>
+                            <div class="fields-checkbox-grid">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="full_name" checked>
+                                    <span class="checkbox-custom"></span> Full Name
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="emails" checked>
+                                    <span class="checkbox-custom"></span> Emails
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="phones" checked>
+                                    <span class="checkbox-custom"></span> Phones
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="skills" checked>
+                                    <span class="checkbox-custom"></span> Skills
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="headline" checked>
+                                    <span class="checkbox-custom"></span> Headline
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="years_experience" checked>
+                                    <span class="checkbox-custom"></span> Years Experience
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="location" checked>
+                                    <span class="checkbox-custom"></span> Location
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="links" checked>
+                                    <span class="checkbox-custom"></span> Links
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="experience" checked>
+                                    <span class="checkbox-custom"></span> Experience List
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="field-select" value="education" checked>
+                                    <span class="checkbox-custom"></span> Education List
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Fields Rename Mapping -->
+                        <div class="input-group">
+                            <div class="rename-header">
+                                <label class="input-label">Field Rename Mapping</label>
+                                <button type="button" class="btn-text" id="add-rename-btn">
+                                    <i class="fa-solid fa-plus"></i> Add Rename Mapping
+                                </button>
+                            </div>
+                            <div id="rename-mappings-container" class="rename-list">
+                                <!-- Example default row -->
+                                <div class="rename-row default-rename">
+                                    <input type="text" class="rename-path" value="emails[0]" placeholder="Path (e.g. emails[0])" readonly>
+                                    <i class="fa-solid fa-arrow-right-long rename-arrow"></i>
+                                    <input type="text" class="rename-to" value="primary_email" placeholder="New Name" readonly>
+                                    <button type="button" class="btn-icon delete-rename-row" disabled>
+                                        <i class="fa-solid fa-lock"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary btn-block" id="submit-btn">
+                        <span id="btn-text-normal"><i class="fa-solid fa-rotate"></i> Transform Candidate Profile</span>
+                        <span id="btn-text-loading" class="hidden">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i> Processing pipeline...
+                        </span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Right Panel: Output & Visualizations -->
+            <section class="panel glass-card scrollable-content" id="panel-outputs">
+                <!-- Quality Scores & Visualizations -->
+                <div class="pipeline-metrics-banner hidden" id="metrics-container">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-chart-line panel-icon"></i> Quality Metrics</h2>
+                    </div>
+                    <div class="metrics-flex">
+                        <!-- Score Circular Gauge -->
+                        <div class="gauge-container">
+                            <svg class="progress-ring" width="120" height="120">
+                                <circle class="progress-ring__circle-bg" stroke="#1f2335" stroke-width="10" fill="transparent" r="50" cx="60" cy="60"/>
+                                <circle class="progress-ring__circle" id="confidence-circle" stroke="url(#gradient)" stroke-width="10" fill="transparent" r="50" cx="60" cy="60"/>
+                                <defs>
+                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#8a2be2"/>
+                                        <stop offset="100%" stop-color="#4169e1"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="gauge-val" id="confidence-score-text">0%</div>
+                            <div class="gauge-label">Candidate Score</div>
+                        </div>
+
+                        <!-- Parsing Indicators -->
+                        <div class="metrics-details">
+                            <div class="metric-item">
+                                <div class="metric-label">Ingested Sources</div>
+                                <div class="metric-value" id="metrics-sources">-</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Skills Extracted</div>
+                                <div class="metric-value" id="metrics-skills">-</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Work Experience</div>
+                                <div class="metric-value" id="metrics-jobs">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Output Block -->
+                <div class="panel-header" style="margin-top: 20px;">
+                    <div class="output-header-flex">
+                        <div>
+                            <h2><i class="fa-solid fa-code panel-icon"></i> Projected JSON Output</h2>
+                            <p>Final deduplicated, normalized canonical profile</p>
+                        </div>
+                        <div class="actions-group">
+                            <button type="button" class="btn btn-secondary btn-sm" id="copy-btn">
+                                <i class="fa-regular fa-copy"></i> Copy
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="download-btn">
+                                <i class="fa-solid fa-download"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JSON Code Viewer -->
+                <div class="code-viewer-container">
+                    <pre><code class="json-code" id="json-output-display">{
+  "message": "Upload candidate documents and click 'Transform Candidate Profile' to view the output."
+}</code></pre>
+                </div>
+
+                <!-- Provenance Timeline Inspector -->
+                <div class="provenance-section hidden" id="provenance-container">
+                    <h3><i class="fa-solid fa-receipt"></i> Field Provenance Audit Trail</h3>
+                    <div class="table-responsive">
+                        <table class="provenance-table">
+                            <thead>
+                                <tr>
+                                    <th>Target Field</th>
+                                    <th>Source</th>
+                                    <th>Confidence</th>
+                                    <th>Extracted Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="provenance-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
