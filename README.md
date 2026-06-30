@@ -4,6 +4,8 @@ A production-grade Python application built using **Clean Architecture** designe
 
 The system includes a **premium dark-mode web UI dashboard** to upload files, configure dynamic output projections, run pipeline transforms, and audit data origins.
 
+**Live Deployment URL:** [https://candidate-transformer.onrender.com](https://candidate-transformer.onrender.com)
+
 ---
 
 ## 1. Pipeline Architecture & Flow

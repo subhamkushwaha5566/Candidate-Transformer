@@ -10,21 +10,21 @@ def build_pdf():
     doc = SimpleDocTemplate(
         pdf_filename,
         pagesize=letter,
-        leftMargin=36,
-        rightMargin=36,
-        topMargin=36,
-        bottomMargin=36
+        leftMargin=30,
+        rightMargin=30,
+        topMargin=25,
+        bottomMargin=25
     )
 
     styles = getSampleStyleSheet()
     
-    # Custom styles for slate theme
+    # Custom compact styles for slate theme
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=20,
-        leading=24,
+        fontSize=15,
+        leading=18,
         textColor=colors.HexColor("#1A202C")
     )
     
@@ -32,8 +32,8 @@ def build_pdf():
         'DocSubTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=14,
+        fontSize=8,
+        leading=11,
         textColor=colors.HexColor("#4A5568")
     )
 
@@ -41,19 +41,19 @@ def build_pdf():
         'SectionH1',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=12,
-        leading=16,
+        fontSize=10,
+        leading=13,
         textColor=colors.HexColor("#2B6CB0"),
-        spaceBefore=10,
-        spaceAfter=4
+        spaceBefore=6,
+        spaceAfter=2
     )
 
     body_style = ParagraphStyle(
         'BodyTextCustom',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=8.5,
-        leading=11,
+        fontSize=7.2,
+        leading=9.5,
         textColor=colors.HexColor("#2D3748")
     )
 
@@ -62,7 +62,7 @@ def build_pdf():
     # Title & Metadata block
     story.append(Paragraph("TECHNICAL DESIGN: MULTI-SOURCE CANDIDATE DATA TRANSFORMER", title_style))
     story.append(Paragraph("Author: Subham Kushwaha &nbsp;|&nbsp; Email: subhamkushwaha5566@gmail.com &nbsp;|&nbsp; Target: Eightfold Engineering Intern Assignment", subtitle_style))
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 4))
 
     # Section 1: Ingestion & Processing Pipeline
     story.append(Paragraph("1. Ingestion & Transformation Pipeline", h1_style))
@@ -76,7 +76,7 @@ def build_pdf():
         "<b>• Validate:</b> Ensures final structural integrity and JSON serializability, degrading gracefully on missing optional fields."
     )
     story.append(Paragraph(p1_text, body_style))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 3))
 
     # Section 2: Canonical Output Schema
     story.append(Paragraph("2. Canonical Output Schema & Normalizations", h1_style))
@@ -91,7 +91,7 @@ def build_pdf():
         "<b>• overall_confidence:</b> Calculated completeness metric based on presence of key profile attributes weighted by the source's trust score."
     )
     story.append(Paragraph(p2_text, body_style))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 3))
 
     # Section 3: Merge, Conflict Resolution & Trust Assignment
     story.append(Paragraph("3. Merge, Conflict Resolution & Trust Policy", h1_style))
@@ -106,7 +106,7 @@ def build_pdf():
         "and unmapped countries are set to null instead of loading dummy placehoders. Invalid data segments are discarded early rather than polluting downstream profiles."
     )
     story.append(Paragraph(p3_text, body_style))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 3))
 
     # Section 4: Runtime Config & Projection Layer
     story.append(Paragraph("4. Runtime Custom-Output Configuration", h1_style))
@@ -119,7 +119,7 @@ def build_pdf():
         "<i>null</i> (retains field with null value), <i>omit</i> (removes key from output dictionary), or <i>error</i> (raises HTTP 400 validation error)."
     )
     story.append(Paragraph(p4_text, body_style))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 3))
 
     # Section 5: Edge Cases & Descoping
     story.append(Paragraph("5. Handled Edge Cases & Scope Limits", h1_style))
