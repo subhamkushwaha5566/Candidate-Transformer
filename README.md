@@ -160,10 +160,4 @@ Transforms raw files using a dynamically provided runtime projection config.
 
 ---
 
-## 7. Cloud Deployment (Render / Docker)
-
-This project contains Docker configurations ready for deployment.
-
-1. Create a **New Web Service** on Render and connect your Git repository.
-2. Select **Docker** as the runtime environment.
-3. Click **Deploy Web Service**. Render will build and expose the application on port `8000`.
+--- Server Live At: https://candidate-transformer.onrender.com ----
