@@ -91,13 +91,48 @@ class Normalizer:
         if not clean:
             return None
 
+        # Strip leading bullets and symbols commonly used in lists
+        test_clean = re.sub(r"^[-\*•o✓▪▫–—\s]+", "", clean).strip()
+        # Strip trailing punctuation like colon or semicolon
+        test_clean = re.sub(r"[:;\s]+$", "", test_clean).strip()
+        if not test_clean:
+            return None
+
+        # Blacklist check
+        blacklist = {
+            "technical skills",
+            "skills",
+            "languages",
+            "framework",
+            "software tools"
+        }
+        if test_clean.lower() in blacklist:
+            return None
+
         # Predefined canonical mapping
         canonical_map = {
             "reactjs": "React",
             "react.js": "React",
+            "react": "React",
             "node": "Node.js",
             "nodejs": "Node.js",
-            "mongo": "MongoDB"
+            "node.js": "Node.js",
+            "mongo": "MongoDB",
+            "mongodb": "MongoDB",
+            "js": "JavaScript",
+            "javascript": "JavaScript",
+            "express": "Express.js",
+            "expressjs": "Express.js",
+            "express.js": "Express.js",
+            "postgres": "PostgreSQL",
+            "postgresql": "PostgreSQL",
+            "flask": "Flask",
+            "scikit-learn": "Scikit-learn",
+            "vs code": "VS Code",
+            "vscode": "VS Code",
+            "intellij": "IntelliJ IDEA",
+            "intellij idea": "IntelliJ IDEA",
+            "cad": "CAD"
         }
 
         match_key = clean.lower()
@@ -111,11 +146,12 @@ class Normalizer:
             "sql": "SQL",
             "docker": "Docker",
             "fastapi": "FastAPI",
-            "mongodb": "MongoDB",
-            "javascript": "JavaScript",
-            "js": "JavaScript",
             "typescript": "TypeScript",
-            "ts": "TypeScript"
+            "ts": "TypeScript",
+            "java": "Java",
+            "html": "HTML",
+            "css": "CSS",
+            "bootstrap": "Bootstrap"
         }
         if match_key in common_skills:
             return common_skills[match_key]
@@ -136,7 +172,7 @@ class Normalizer:
             return None
 
         # Handle sentinels
-        if clean.lower() in ["present", "current"]:
+        if clean.lower() in ["present", "current", "ongoing"]:
             return "Present"
 
         # If it is already exactly YYYY-MM
@@ -172,6 +208,33 @@ class Normalizer:
             pass
 
         logger.warning(f"Could not parse/normalize date string: '{date_string}'")
+        return None
+
+    def normalize_year(self, year_val: Any) -> Optional[int]:
+        """
+        Normalizes a year value to an integer YYYY. Returns None if invalid or ongoing.
+        """
+        if year_val is None:
+            return None
+        
+        if isinstance(year_val, int):
+            return year_val
+            
+        clean = str(year_val).strip()
+        if not clean or clean.lower() in ["present", "current", "ongoing"]:
+            return None
+            
+        match = re.search(r"\b(\d{4})\b", clean)
+        if match:
+            return int(match.group(1))
+            
+        norm_date = self.normalize_date(clean)
+        if norm_date and norm_date.lower() not in ["present", "current", "ongoing"] and len(norm_date) >= 4:
+            try:
+                return int(norm_date[:4])
+            except Exception:
+                pass
+                
         return None
 
     def normalize_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
@@ -233,23 +296,23 @@ class Normalizer:
             for exp in experience:
                 if isinstance(exp, dict):
                     comp = exp.get("company")
-                    role = exp.get("role")
-                    s_date = exp.get("start_date")
-                    e_date = exp.get("end_date")
-                    desc = exp.get("description")
+                    title = exp.get("title") or exp.get("role")
+                    start = exp.get("start") or exp.get("start_date")
+                    end = exp.get("end") or exp.get("end_date")
+                    summary = exp.get("summary") or exp.get("description")
                 else:
                     comp = getattr(exp, "company", None)
-                    role = getattr(exp, "role", None)
-                    s_date = getattr(exp, "start_date", None)
-                    e_date = getattr(exp, "end_date", None)
-                    desc = getattr(exp, "description", None)
+                    title = getattr(exp, "title", getattr(exp, "role", None))
+                    start = getattr(exp, "start", getattr(exp, "start_date", None))
+                    end = getattr(exp, "end", getattr(exp, "end_date", None))
+                    summary = getattr(exp, "summary", getattr(exp, "description", None))
 
                 normalized_exp.append({
                     "company": str(comp).strip() if comp else None,
-                    "role": str(role).strip() if role else None,
-                    "start_date": self.normalize_date(s_date) if s_date else None,
-                    "end_date": self.normalize_date(e_date) if e_date else None,
-                    "description": desc
+                    "title": str(title).strip() if title else None,
+                    "start": self.normalize_date(start) if start else None,
+                    "end": self.normalize_date(end) if end else None,
+                    "summary": summary
                 })
         normalized["experience"] = normalized_exp
 
@@ -261,22 +324,19 @@ class Normalizer:
                 if isinstance(edu, dict):
                     inst = edu.get("institution")
                     deg = edu.get("degree")
-                    field = edu.get("field_of_study")
-                    s_date = edu.get("start_date")
-                    e_date = edu.get("end_date")
+                    field = edu.get("field") or edu.get("field_of_study")
+                    end_yr = edu.get("end_year") or edu.get("end_date")
                 else:
                     inst = getattr(edu, "institution", None)
                     deg = getattr(edu, "degree", None)
-                    field = getattr(edu, "field_of_study", None)
-                    s_date = getattr(edu, "start_date", None)
-                    e_date = getattr(edu, "end_date", None)
+                    field = getattr(edu, "field", getattr(edu, "field_of_study", None))
+                    end_yr = getattr(edu, "end_year", getattr(edu, "end_date", None))
 
                 normalized_edu.append({
                     "institution": str(inst).strip() if inst else None,
                     "degree": str(deg).strip() if deg else None,
-                    "field_of_study": str(field).strip() if field else None,
-                    "start_date": self.normalize_date(s_date) if s_date else None,
-                    "end_date": self.normalize_date(e_date) if e_date else None
+                    "field": str(field).strip() if field else None,
+                    "end_year": self.normalize_year(end_yr) if end_yr is not None else None
                 })
         normalized["education"] = normalized_edu
 

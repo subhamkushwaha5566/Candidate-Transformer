@@ -83,7 +83,9 @@ class ProjectionEngine:
         # Normalize missing value behavior (null, omit, error)
         on_missing = str(config_dict.get("on_missing", "null")).lower()
 
-        candidate_dict = candidate.model_dump()
+        # Deep copy to ensure projection isolation and prevent mutation
+        candidate_copy = candidate.model_copy(deep=True)
+        candidate_dict = candidate_copy.model_dump()
         projected: Dict[str, Any] = {}
 
         # 2. Extract and rename fields

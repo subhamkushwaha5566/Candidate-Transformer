@@ -111,10 +111,10 @@ class CSVParser(BaseParser):
         if current_company or title:
             experience.append({
                 "company": current_company,
-                "role": title,
-                "start_date": None,
-                "end_date": None,
-                "description": None
+                "title": title,
+                "start": None,
+                "end": None,
+                "summary": None
             })
 
         return {

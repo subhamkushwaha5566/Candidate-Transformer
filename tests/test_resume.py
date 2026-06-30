@@ -59,7 +59,7 @@ def test_valid_resume_parsing(mock_open, resume_parser, valid_resume_text):
     assert result["phones"] == ["+1 555-019-9922"]
     
     # Skills check (predefined mapping values)
-    skills_names = [s["name"] for s in result["skills"]]
+    skills_names = result["skills"]
     assert "Python" in skills_names
     assert "React" in skills_names
     assert "MongoDB" in skills_names

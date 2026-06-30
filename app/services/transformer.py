@@ -86,37 +86,30 @@ class CandidateTransformer:
 
         # 5. Compute overall confidence score
         try:
-            overall_conf = self.confidence_engine.calculate_overall_confidence(merged_candidate)
+            overall_conf = self.confidence_engine.calculate_overall_confidence(
+                merged_candidate, 
+                raw_records=normalized_records
+            )
             merged_candidate.overall_confidence = overall_conf
         except Exception as e:
             logger.exception("Failed to compute candidate overall confidence.")
             raise ValueError(f"Confidence score calculation failed: {str(e)}")
 
-        # 6. Validate runtime configuration schema
+        # 6. Validate canonical Candidate profile structure
+        self.validator.validate_profile(merged_candidate)
+
+        # 7. Validate runtime configuration schema
         self.validator.validate_runtime_config_schema(config_payload)
 
-        # 7. Apply projection mapping and formatting
+        # 8. Apply projection mapping and formatting
         try:
             projected_output = self.projector.project(merged_candidate, config_payload)
         except Exception as e:
             logger.exception("Candidate projection mapping failed.")
             raise ValueError(f"Output projection failed: {str(e)}")
 
-        # 8. Run final JSON and field completeness validations
+        # 9. Run final JSON and field completeness validations
         self.validator.validate_output_json(projected_output)
-
-        # Enforce name validation unless omitted explicitly by the output config
-        on_missing = "null"
-        if isinstance(config_payload, dict):
-            on_missing = str(config_payload.get("on_missing", "null")).lower()
-        elif isinstance(config_payload, str) and config_payload.strip():
-            try:
-                on_missing = str(json.loads(config_payload).get("on_missing", "null")).lower()
-            except Exception:
-                pass
-        
-        if "full_name" in projected_output or on_missing != "omit":
-            self.validator.validate_required_fields(projected_output, ["full_name"])
 
         logger.info("Candidate transformation pipeline executed successfully.")
         return projected_output

@@ -30,10 +30,10 @@ def test_process_only_csv(mock_csv_parse, transformer):
         "experience": [
             {
                 "company": "Google",
-                "role": "Engineer",
-                "start_date": None,
-                "end_date": None,
-                "description": None
+                "title": "Engineer",
+                "start": None,
+                "end": None,
+                "summary": None
             }
         ]
     }]
@@ -44,8 +44,8 @@ def test_process_only_csv(mock_csv_parse, transformer):
     assert result["emails"] == ["alice@example.com"]
     # Indian phone number is E.164 normalized
     assert result["phones"] == ["+919999999999"]
-    # Average of name (0.95), email (0.95), phone (0.95), skills (0.00) = 0.7125
-    assert result["overall_confidence"] == pytest.approx(0.7125)
+    # Weighted confidence formula (including completeness of location, education and penalties)
+    assert result["overall_confidence"] == pytest.approx(0.655, abs=1e-4)
     assert len(result["provenance"]) > 0
 
 @patch("app.parsers.resume_parser.ResumeParser.parse")
@@ -57,14 +57,14 @@ def test_process_only_resume(mock_resume_parse, transformer):
         "full_name": "Alice Vance",
         "emails": ["work@alice.com"],
         "phones": ["+1 555-019-9922"],
-        "skills": [{"name": "Python"}, {"name": "React"}, {"name": "FastAPI"}],
+        "skills": ["Python", "React", "FastAPI"],
         "experience": [
             {
                 "company": "Google",
-                "role": "Engineer",
-                "start_date": "Jan 2020",
-                "end_date": "Present",
-                "description": "Worked on core Search platform."
+                "title": "Engineer",
+                "start": "Jan 2020",
+                "end": "Present",
+                "summary": "Worked on core Search platform."
             }
         ],
         "education": [],
@@ -84,13 +84,13 @@ def test_process_only_resume(mock_resume_parse, transformer):
     assert result["full_name"] == "Alice Vance"
     assert result["emails"] == ["work@alice.com"]
     assert result["phones"] == ["+15550199922"]
-    assert result["overall_confidence"] == pytest.approx(0.85)
+    assert result["overall_confidence"] == pytest.approx(0.6588, abs=1e-4)
     assert len(result["skills"]) == 3
     
     # Assert Present sentinel date normalization
     assert len(result["experience"]) == 1
-    assert result["experience"][0]["start_date"] == "2020-01"
-    assert result["experience"][0]["end_date"] == "Present"
+    assert result["experience"][0]["start"] == "2020-01"
+    assert result["experience"][0]["end"] == "Present"
 
 @patch("app.parsers.resume_parser.ResumeParser.parse")
 @patch("app.parsers.csv_parser.CSVParser.parse")
@@ -107,10 +107,10 @@ def test_process_integrated_deep_merge(mock_csv_parse, mock_resume_parse, transf
         "experience": [
             {
                 "company": "Google",
-                "role": "Engineer",
-                "start_date": None,
-                "end_date": None,
-                "description": None
+                "title": "Engineer",
+                "start": None,
+                "end": None,
+                "summary": None
             }
         ]
     }]
@@ -119,14 +119,14 @@ def test_process_integrated_deep_merge(mock_csv_parse, mock_resume_parse, transf
         "full_name": "Alice Vance",
         "emails": ["work@alice.com"],
         "phones": ["+1 555-019-9922"],
-        "skills": [{"name": "Python"}, {"name": "React"}, {"name": "FastAPI"}],
+        "skills": ["Python", "React", "FastAPI"],
         "experience": [
             {
                 "company": "Google",
-                "role": "Engineer",
-                "start_date": "Jan 2020",
-                "end_date": "Present",
-                "description": "Worked on core Search platform."
+                "title": "Engineer",
+                "start": "Jan 2020",
+                "end": "Present",
+                "summary": "Worked on core Search platform."
             }
         ]
     }
@@ -150,10 +150,10 @@ def test_process_integrated_deep_merge(mock_csv_parse, mock_resume_parse, transf
     assert len(result["experience"]) == 1
     exp = result["experience"][0]
     assert exp["company"] == "Google"
-    assert exp["role"] == "Engineer"
-    assert exp["start_date"] == "2020-01"  # filled in from Resume
-    assert exp["end_date"] == "Present"     # filled in from Resume
-    assert exp["description"] == "Worked on core Search platform."  # filled in from Resume
+    assert exp["title"] == "Engineer"
+    assert exp["start"] == "2020-01"  # filled in from Resume
+    assert exp["end"] == "Present"     # filled in from Resume
+    assert exp["summary"] == "Worked on core Search platform."  # filled in from Resume
 
-    # Overall confidence matches the average contribution (0.90)
-    assert result["overall_confidence"] == pytest.approx(0.90)
+    # Overall confidence matches the weighted formula (0.5621)
+    assert result["overall_confidence"] == pytest.approx(0.5621, abs=1e-4)

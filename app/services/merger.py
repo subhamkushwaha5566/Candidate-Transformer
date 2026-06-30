@@ -1,4 +1,5 @@
 import uuid
+import hashlib
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from app.schemas.candidate import Candidate, Location, Links, Skill, Experience, Education, Provenance
@@ -28,7 +29,7 @@ class CandidateMerger:
 
         Returns:
             Candidate: The final merged canonical candidate object.
-        """
+            """
         if not candidate_records:
             raise ValueError("Cannot merge an empty list of candidate records")
 
@@ -75,22 +76,42 @@ class CandidateMerger:
                     return val
             return None
 
-        # Resolve Candidate ID
-        candidate_id = resolve_scalar("candidate_id", ["candidate_id"])
-        if not candidate_id:
-            candidate_id = "cand_" + str(uuid.uuid4())[:8]
-
-        # Resolve base scalar fields
+        # 2. Resolve base scalar fields in dependency order
         full_name = resolve_scalar("full_name", ["full_name"]) or "Unknown Candidate"
         headline = resolve_scalar("headline", ["headline"])
-        years_exp_val = resolve_scalar("years_experience", ["years_experience"])
+        
+        # Merge emails array (union merged)
+        emails_set = set()
+        for item in records_with_confidence:
+            emails = item["data"].get("emails", [])
+            if isinstance(emails, list):
+                for email in emails:
+                    if email and str(email).strip():
+                        clean_email = str(email).strip().lower()
+                        if clean_email not in emails_set:
+                            emails_set.add(clean_email)
+                            provenance_list.append(Provenance(
+                                field="emails",
+                                source=item["source"],
+                                confidence=item["confidence"],
+                                extracted_at=item["timestamp"],
+                                raw_value=email
+                            ))
 
-        years_experience = None
-        if years_exp_val is not None:
-            try:
-                years_experience = float(years_exp_val)
-            except ValueError:
-                pass
+        # Deterministic Candidate ID from stable candidate fields (name + primary_email)
+        sorted_emails = sorted(list(emails_set))
+        primary_email = sorted_emails[0] if sorted_emails else ""
+        stable_str = (full_name or "").strip().lower() + primary_email.strip().lower()
+        candidate_id = hashlib.sha256(stable_str.encode("utf-8")).hexdigest()[:12]
+        
+        # Add provenance for candidate_id
+        provenance_list.append(Provenance(
+            field="candidate_id",
+            source=records_with_confidence[0]["source"],
+            confidence=records_with_confidence[0]["confidence"],
+            extracted_at=records_with_confidence[0]["timestamp"],
+            raw_value=candidate_id
+        ))
 
         # Resolve Location nested scalars
         city = resolve_scalar("location.city", ["location", "city"])
@@ -121,24 +142,6 @@ class CandidateMerger:
                             raw_value=clean_link
                         ))
         links = Links(linkedin=linkedin, github=github, portfolio=portfolio, other=list(other_links_set))
-
-        # Merge emails array (union merged)
-        emails_set = set()
-        for item in records_with_confidence:
-            emails = item["data"].get("emails", [])
-            if isinstance(emails, list):
-                for email in emails:
-                    if email and str(email).strip():
-                        clean_email = str(email).strip().lower()
-                        if clean_email not in emails_set:
-                            emails_set.add(clean_email)
-                            provenance_list.append(Provenance(
-                                field="emails",
-                                source=item["source"],
-                                confidence=item["confidence"],
-                                extracted_at=item["timestamp"],
-                                raw_value=email
-                            ))
 
         # Merge phones array (union merged)
         phones_set = set()
@@ -193,7 +196,7 @@ class CandidateMerger:
                                 if current_exp is None or exp_years > current_exp:
                                     skills_map[key].experience_years = exp_years
 
-        # Merge experience array with deep sub-property merging
+        # Merge experience array with deep sub-property merging (company, title, start, end, summary)
         experience_map = {}
         for item in records_with_confidence:
             exp_items = item["data"].get("experience", [])
@@ -201,29 +204,29 @@ class CandidateMerger:
                 for exp in exp_items:
                     if isinstance(exp, dict):
                         comp = exp.get("company")
-                        role = exp.get("role")
-                        s_date = exp.get("start_date")
-                        e_date = exp.get("end_date")
-                        desc = exp.get("description")
+                        title = exp.get("title") or exp.get("role")
+                        start = exp.get("start") or exp.get("start_date")
+                        end = exp.get("end") or exp.get("end_date")
+                        summary = exp.get("summary") or exp.get("description")
                     else:
                         comp = getattr(exp, "company", None)
-                        role = getattr(exp, "role", None)
-                        s_date = getattr(exp, "start_date", None)
-                        e_date = getattr(exp, "end_date", None)
-                        desc = getattr(exp, "description", None)
+                        title = getattr(exp, "title", getattr(exp, "role", None))
+                        start = getattr(exp, "start", getattr(exp, "start_date", None))
+                        end = getattr(exp, "end", getattr(exp, "end_date", None))
+                        summary = getattr(exp, "summary", getattr(exp, "description", None))
 
-                    if comp or role:
+                    if comp or title:
                         comp_clean = str(comp).strip() if comp else "Unknown Company"
-                        role_clean = str(role).strip() if role else "Unknown Role"
-                        key = f"{comp_clean.lower()}|{role_clean.lower()}"
+                        title_clean = str(title).strip() if title else "Unknown Title"
+                        key = f"{comp_clean.lower()}|{title_clean.lower()}"
 
                         if key not in experience_map:
                             exp_obj = Experience(
                                 company=comp_clean,
-                                role=role_clean,
-                                start_date=s_date,
-                                end_date=e_date,
-                                description=desc
+                                title=title_clean,
+                                start=start,
+                                end=end,
+                                summary=summary
                             )
                             experience_map[key] = exp_obj
                             provenance_list.append(Provenance(
@@ -231,21 +234,20 @@ class CandidateMerger:
                                 source=item["source"],
                                 confidence=item["confidence"],
                                 extracted_at=item["timestamp"],
-                                raw_value={"company": comp, "role": role}
+                                raw_value={"company": comp, "title": title}
                             ))
                         else:
-                            # Fallback writers populate missing fields
                             existing = experience_map[key]
-                            if not existing.start_date and s_date:
-                                existing.start_date = s_date
-                            if not existing.end_date and e_date:
-                                existing.end_date = e_date
-                            if not existing.description and desc:
-                                existing.description = desc
+                            if not existing.start and start:
+                                existing.start = start
+                            if not existing.end and end:
+                                existing.end = end
+                            if not existing.summary and summary:
+                                existing.summary = summary
 
         experience_list = list(experience_map.values())
 
-        # Merge education array with deep sub-property merging
+        # Merge education array with deep sub-property merging (institution, degree, field, end_year)
         education_map = {}
         for item in records_with_confidence:
             edu_items = item["data"].get("education", [])
@@ -254,15 +256,13 @@ class CandidateMerger:
                     if isinstance(edu, dict):
                         inst = edu.get("institution")
                         deg = edu.get("degree")
-                        field = edu.get("field_of_study")
-                        s_date = edu.get("start_date")
-                        e_date = edu.get("end_date")
+                        field = edu.get("field") or edu.get("field_of_study")
+                        end_yr = edu.get("end_year") or edu.get("end_date")
                     else:
                         inst = getattr(edu, "institution", None)
                         deg = getattr(edu, "degree", None)
-                        field = getattr(edu, "field_of_study", None)
-                        s_date = getattr(edu, "start_date", None)
-                        e_date = getattr(edu, "end_date", None)
+                        field = getattr(edu, "field", getattr(edu, "field_of_study", None))
+                        end_yr = getattr(edu, "end_year", getattr(edu, "end_date", None))
 
                     if inst:
                         inst_clean = str(inst).strip()
@@ -273,9 +273,8 @@ class CandidateMerger:
                             edu_obj = Education(
                                 institution=inst_clean,
                                 degree=deg_clean if deg_clean else None,
-                                field_of_study=field,
-                                start_date=s_date,
-                                end_date=e_date
+                                field=field,
+                                end_year=end_yr
                             )
                             education_map[key] = edu_obj
                             provenance_list.append(Provenance(
@@ -286,16 +285,81 @@ class CandidateMerger:
                                 raw_value={"institution": inst, "degree": deg}
                             ))
                         else:
-                            # Fallback writers populate missing fields
                             existing = education_map[key]
-                            if not existing.field_of_study and field:
-                                existing.field_of_study = field
-                            if not existing.start_date and s_date:
-                                existing.start_date = s_date
-                            if not existing.end_date and e_date:
-                                existing.end_date = e_date
+                            if not existing.field and field:
+                                existing.field = field
+                            if not existing.end_year and end_yr is not None:
+                                existing.end_year = end_yr
 
         education_list = list(education_map.values())
+
+        # Infer headline if not present
+        if not headline:
+            latest_experience = None
+            latest_date = None
+            
+            def parse_date_to_compare(dt_str: Optional[str]) -> datetime:
+                if not dt_str:
+                    return datetime.min
+                if dt_str.lower() in ["present", "current", "ongoing"]:
+                    return datetime.max
+                try:
+                    return datetime.strptime(dt_str, "%Y-%m")
+                except Exception:
+                    try:
+                        return datetime.strptime(dt_str, "%Y")
+                    except Exception:
+                        return datetime.min
+                        
+            for exp in experience_list:
+                if exp.title:
+                    exp_start = parse_date_to_compare(exp.start)
+                    exp_end = parse_date_to_compare(exp.end)
+                    if latest_experience is None:
+                        latest_experience = exp
+                        latest_date = (exp_end, exp_start)
+                    else:
+                        current_date = (exp_end, exp_start)
+                        if current_date > latest_date:
+                            latest_experience = exp
+                            latest_date = current_date
+                            
+            if latest_experience and latest_experience.title:
+                headline = latest_experience.title
+            elif skills_map:
+                top_skills = [s.name for s in list(skills_map.values())[:3]]
+                if top_skills:
+                    headline = f"{', '.join(top_skills)} Developer"
+            else:
+                headline = "Candidate"
+
+        # Calculate years_experience
+        total_months = 0
+        for exp in experience_list:
+            if not exp.start:
+                continue
+            try:
+                start_dt = datetime.strptime(exp.start, "%Y-%m")
+            except Exception:
+                try:
+                    start_dt = datetime.strptime(exp.start, "%Y")
+                except Exception:
+                    continue
+            if not exp.end or exp.end.lower() in ["present", "current", "ongoing"]:
+                end_dt = datetime.now()
+            else:
+                try:
+                    end_dt = datetime.strptime(exp.end, "%Y-%m")
+                except Exception:
+                    try:
+                        end_dt = datetime.strptime(exp.end, "%Y")
+                    except Exception:
+                        continue
+            diff_months = (end_dt.year - start_dt.year) * 12 + (end_dt.month - start_dt.month) + 1
+            if diff_months > 0:
+                total_months += diff_months
+                
+        years_experience = round(total_months / 12.0, 1) if experience_list else 0.0
 
         # Compute overall confidence (use highest confidence among the merged sources)
         overall_confidence = max([item["confidence"] for item in records_with_confidence]) if records_with_confidence else 0.0

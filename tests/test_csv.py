@@ -49,7 +49,7 @@ def test_valid_csv_parsing(csv_parser, valid_csv_bytes):
     assert john["headline"] == "Senior Engineer"
     assert len(john["experience"]) == 1
     assert john["experience"][0]["company"] == "Google"
-    assert john["experience"][0]["role"] == "Senior Engineer"
+    assert john["experience"][0]["title"] == "Senior Engineer"
 
     # Verify second candidate
     jane = result[1]
@@ -59,7 +59,7 @@ def test_valid_csv_parsing(csv_parser, valid_csv_bytes):
     assert jane["headline"] == "Designer"
     assert len(jane["experience"]) == 1
     assert jane["experience"][0]["company"] is None
-    assert jane["experience"][0]["role"] == "Designer"
+    assert jane["experience"][0]["title"] == "Designer"
 
 def test_missing_csv_file(csv_parser):
     """

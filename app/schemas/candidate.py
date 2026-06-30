@@ -58,16 +58,16 @@ class Experience(BaseModel):
     Professional experience history.
     """
     company: str = Field(..., description="Name of the employing company")
-    role: str = Field(..., description="Job role or title")
-    start_date: Optional[str] = Field(default=None, description="Start date of employment (YYYY-MM or YYYY)")
-    end_date: Optional[str] = Field(default=None, description="End date of employment (YYYY-MM or YYYY) or 'Present'")
-    description: Optional[str] = Field(default=None, description="Job duties and accomplishments")
+    title: str = Field(..., description="Job role or title")
+    start: Optional[str] = Field(default=None, description="Start date of employment (YYYY-MM or YYYY)")
+    end: Optional[str] = Field(default=None, description="End date of employment (YYYY-MM or YYYY) or 'Present'")
+    summary: Optional[str] = Field(default=None, description="Job duties and accomplishments")
 
-    @field_validator("company", "role")
+    @field_validator("company", "title")
     @classmethod
     def validate_non_empty(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError("Company and role cannot be empty")
+            raise ValueError("Company and title cannot be empty")
         return v.strip()
 
 class Education(BaseModel):
@@ -76,9 +76,8 @@ class Education(BaseModel):
     """
     institution: str = Field(..., description="Name of school, university, or institution")
     degree: Optional[str] = Field(default=None, description="Degree or certificate obtained")
-    field_of_study: Optional[str] = Field(default=None, description="Major or area of specialization")
-    start_date: Optional[str] = Field(default=None, description="Enrollment start date")
-    end_date: Optional[str] = Field(default=None, description="Graduation date")
+    field: Optional[str] = Field(default=None, description="Major or area of specialization")
+    end_year: Optional[int] = Field(default=None, description="Graduation year (YYYY)")
 
     @field_validator("institution")
     @classmethod
